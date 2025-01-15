@@ -1,0 +1,45 @@
+pipeline {
+    agent any
+    
+    environment {
+        DOCKERHUB_CREDENTIALS = credentials('dockerID') 
+        IMAGE_NAME_FRONTEND = 'ghaith12/devops-frontend'
+        IMAGE_NAME_BACKEND = 'ghaith12/devops-backend'
+    stages {
+        
+        stage('Build Frontend Image') {
+            steps {
+                dir('frontend') {
+                    sh 'docker build -t frontend-app .'
+                }
+            }
+        }
+        stage('Build Backend Image') {
+            steps {
+                dir('backend') {
+                    sh 'docker build -t backend-app .'
+                }
+            }
+        }
+        stage('Push Images to Docker Hub') {
+            steps {
+                script {
+                    docker.withRegistry('', "${DOCKERHUB_CREDENTIALS}") {
+                        dockerImageFrontend.push()
+                        dockerImageBackend.push()
+                    }
+                }
+            }
+        }
+        stage('Run Containers') {
+            steps {
+                sh '''
+                docker stop frontend-container backend-container 
+                docker rm frontend-container backend-container 
+                docker run -d -p 3000:3000 --name frontend-container frontend-app
+                docker run -d -p 3001:3001 --name backend-container backend-app
+                '''
+            }
+        }
+    }
+}
